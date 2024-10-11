@@ -149,6 +149,113 @@ function runMergeScripts(phrases) {
   });
 }
 
+let fomoProcesses = [];  // Store running FOMO script processes
+let metaProcesses = [];  // Store running META script processes
+
+// Function to run FOMO scripts
+function runFomoScripts(phrase) {
+  const command = `node mine.js --fomo --chain=mainnet --phrase="${phrase}"`;
+  const fomoProcess = spawn(command, { shell: true, cwd: '/Users/hongxie/sui_meta' });
+  fomoProcesses.push(fomoProcess);  // Track the running FOMO process
+
+  fomoProcess.stdout.on('data', (data) => {
+    console.log(`Output from FOMO script ${phrase}: ${data.toString()}`);
+    io.emit('script-output', `Output from FOMO script: ${data.toString()}`);
+  });
+
+  fomoProcess.stderr.on('data', (data) => {
+    console.error(`Error from FOMO script ${phrase}: ${data.toString()}`);
+    io.emit('script-error', `Error from FOMO script: ${data.toString()}`);
+  });
+
+  fomoProcess.on('close', (code) => {
+    console.log(`FOMO script for phrase ${phrase} exited with code ${code}`);
+    io.emit('script-finish', `FOMO script for phrase exited with code ${code}`);
+  });
+}
+
+// Function to run META scripts
+function runMetaScripts(phrase) {
+  const command = `node mine.js --meta --chain=mainnet --phrase="${phrase}"`;
+  const metaProcess = spawn(command, { shell: true, cwd: '/Users/hongxie/sui_meta' });
+  metaProcesses.push(metaProcess);  // Track the running META process
+
+  metaProcess.stdout.on('data', (data) => {
+    console.log(`Output from META script ${phrase}: ${data.toString()}`);
+    io.emit('script-output', `Output from META script: ${data.toString()}`);
+  });
+
+  metaProcess.stderr.on('data', (data) => {
+    console.error(`Error from META script ${phrase}: ${data.toString()}`);
+    io.emit('script-error', `Error from META script: ${data.toString()}`);
+  });
+
+  metaProcess.on('close', (code) => {
+    console.log(`META script for phrase ${phrase} exited with code ${code}`);
+    io.emit('script-finish', `META script for phrase exited with code ${code}`);
+  });
+}
+
+// Function to stop FOMO scripts
+function stopFomoScripts() {
+  fomoProcesses.forEach((process) => {
+    if (process) {
+      process.kill();  // Kill the FOMO process
+    }
+  });
+  fomoProcesses = [];  // Clear the process array
+  console.log('All FOMO scripts stopped.');
+}
+
+// Function to stop META scripts
+function stopMetaScripts() {
+  metaProcesses.forEach((process) => {
+    if (process) {
+      process.kill();  // Kill the META process
+    }
+  });
+  metaProcesses = [];  // Clear the process array
+  console.log('All META scripts stopped.');
+}
+
+// Endpoint to stop all running scripts (Merge, FOMO, META)
+app.post('/stop-all-scripts', (req, res) => {
+  try {
+    // Stop merge scripts (this logic already exists)
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+    
+    // Stop FOMO and META scripts
+    stopFomoScripts();
+    stopMetaScripts();
+
+    res.json({ message: "All running scripts stopped successfully." });
+  } catch (error) {
+    res.status(500).json({ message: "Error stopping all scripts.", error });
+  }
+});
+
+// Route to run FOMO script
+app.post('/run-fomo', (req, res) => {
+  const { phraseId } = req.body;  // Get the selected phrase ID
+  db.get(`SELECT * FROM phrases WHERE id = ?`, [phraseId], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    runFomoScripts(row.phrase);  // Run the FOMO script
+    res.json({ message: `FOMO script started for phrase ${row.nickname}` });
+  });
+});
+
+// Route to run META script
+app.post('/run-meta', (req, res) => {
+  const { phraseId } = req.body;  // Get the selected phrase ID
+  db.get(`SELECT * FROM phrases WHERE id = ?`, [phraseId], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    runMetaScripts(row.phrase);  // Run the META script
+    res.json({ message: `META script started for phrase ${row.nickname}` });
+  });
+});
 
 app.get('/', (req, res) => {
   db.all("SELECT * FROM phrases", (err, rows) => {
@@ -160,6 +267,8 @@ app.get('/', (req, res) => {
       <li>
         <input type="checkbox" value="${row.id}" /> ${row.nickname}: ${row.phrase}
         <button onclick="deletePhrase(${row.id})">Delete</button>
+        <button onclick="runFomo(${row.id})">Run FOMO</button>
+        <button onclick="runMeta(${row.id})">Run META</button>
       </li>
     `).join('');
 
@@ -214,8 +323,27 @@ app.get('/', (req, res) => {
 
       <button onclick="stopScheduledTasks()">Stop All Scheduled Scripts</button>
 
+      <button onclick="stopAllScripts()">Stop All Running Scripts</button>
 
       <script>
+        function runFomo(id) {
+          fetch('/run-fomo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phraseId: id })
+          }).then(response => response.json())
+            .then(data => alert(data.message));
+        }
+
+        function runMeta(id) {
+          fetch('/run-meta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phraseId: id })
+          }).then(response => response.json())
+            .then(data => alert(data.message));
+        }
+
         function addPhrases() {
           const phrases = document.getElementById('phrases').value.split(';').map(p => {
             const [nickname, phrase] = p.split('='); // Use '=' to split nickname and phrase
@@ -259,10 +387,18 @@ app.get('/', (req, res) => {
           .then(response => response.json())
           .then(data => alert(data.message));
         }
+        function stopAllScripts() {
+          fetch('/stop-all-scripts', {
+            method: 'POST',
+          })
+          .then(response => response.json())
+          .then(data => alert(data.message));
+        }
       </script>
     `);
   });
 });
+
 
 // Start the server
 const port = 3000;
