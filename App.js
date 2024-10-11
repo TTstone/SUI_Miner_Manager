@@ -130,7 +130,7 @@ app.post('/schedule', (req, res) => {
 function runMergeScripts(phrases) {
   phrases.forEach((phrase) => {
     const command = `node merge.js --fomo --chain=mainnet --phrase="${phrase.phrase}"`;
-    const process = spawn(command, { shell: true, cwd: '/Users/hongxie/sui_meta' });
+    const process = spawn(command, { shell: true, cwd: workingDir });
 
     process.stdout.on('data', (data) => {
       console.log(`Output from phrase ${phrase.phrase}: ${data.toString()}`);
@@ -155,7 +155,7 @@ let metaProcesses = [];  // Store running META script processes
 // Function to run FOMO scripts
 function runFomoScripts(phrase) {
   const command = `node mine.js --fomo --chain=mainnet --phrase="${phrase}"`;
-  const fomoProcess = spawn(command, { shell: true, cwd: '/Users/hongxie/sui_meta' });
+  const fomoProcess = spawn(command, { shell: true, cwd: workingDir });
   fomoProcesses.push(fomoProcess);  // Track the running FOMO process
 
   fomoProcess.stdout.on('data', (data) => {
@@ -177,7 +177,7 @@ function runFomoScripts(phrase) {
 // Function to run META scripts
 function runMetaScripts(phrase) {
   const command = `node mine.js --meta --chain=mainnet --phrase="${phrase}"`;
-  const metaProcess = spawn(command, { shell: true, cwd: '/Users/hongxie/sui_meta' });
+  const metaProcess = spawn(command, { shell: true, cwd: workingDir });
   metaProcesses.push(metaProcess);  // Track the running META process
 
   metaProcess.stdout.on('data', (data) => {
