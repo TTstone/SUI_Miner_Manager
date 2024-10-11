@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "child_process": "^1.0.2",
+    "express": "^4.21.1",
+    "node-cron": "^3.0.3",
+    "node-schedule": "^2.1.1",
+    "socket.io": "^4.8.0",
+    "sqlite3": "^5.1.7"
+  }
+}

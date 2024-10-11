@@ -1,0 +1,28 @@
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  // When the script starts running
+  socket.on('script-start', (message) => {
+    document.getElementById('output').innerHTML += `<p>${message}</p>`;
+  });
+
+  // Receive script output from the server
+  socket.on('script-output', (data) => {
+    document.getElementById('output').innerHTML += `<p>${data}</p>`;
+  });
+
+  // Receive any errors from the script
+  socket.on('script-error', (error) => {
+    document.getElementById('output').innerHTML += `<p style="color: red;">Error: ${error}</p>`;
+  });
+
+  // When the script finishes running
+  socket.on('script-finish', (message) => {
+    document.getElementById('output').innerHTML += `<p><strong>${message}</strong></p>`;
+  });
+</script>
+
+<!-- Output area -->
+<h2>Script Output</h2>
+<div id="output" style="border: 1px solid black; padding: 10px; height: 300px; overflow-y: scroll;"></div>
